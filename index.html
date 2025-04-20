@@ -131,7 +131,7 @@
 
       <div class="level" style="top: 210px; left: 260px">
         <div id="bf-4" class="battlefield"></div>
-        <div class="location-name">Морг</div>
+        <div class="location-name">Кладбище</div>
       </div>
       <div class="buttons" id="buttons" style="top: 260px"></div>
     </main>
@@ -173,6 +173,47 @@
       const lastLevelId = 4;
       let lastTeamId = 0;
       const teams = [];
+
+      const getAvailableTeams = (includeLoosers, excludedId) => {
+        const result = [];
+        for (let team of teams.filter(
+          (x) =>
+            (x.level < lastLevelId || includeLoosers) &&
+            (!excludedId || x.id != excludedId)
+        )) {
+          const option = document.createElement("option");
+          option.value = team.id;
+          option.innerText = team.name;
+          result.push(option);
+        }
+
+        return result;
+      };
+
+      const setOptions = (select, options) => {
+        select.innerHTML = "";
+        for (let option of options) {
+          select.appendChild(option);
+        }
+      };
+
+      const initSelects = () => {
+        const from = document.getElementById("select-shoot-from");
+        const fromValue = from.value;
+        setOptions(from, getAvailableTeams(true));
+        const to = document.getElementById("select-shoot-to");
+        const toValue = to.value;
+        console.log(from.value);
+        setOptions(to, getAvailableTeams(false, fromValue));
+        from.value = fromValue;
+        to.value = toValue;
+      };
+
+      const disableShootButton = () => {
+        document.getElementById("shoot-button").disabled =
+          !document.getElementById("select-shoot-from").value ||
+          !document.getElementById("select-shoot-to");
+      };
 
       const addTeam = (name) => {
         id = ++lastTeamId;
@@ -225,13 +266,14 @@
         // teamControls.appendChild(damageButton);
 
         buttonsDiv.appendChild(teamControls);
+        initSelects();
 
-        for (let select of document.querySelectorAll("[teams-select]")) {
-          const option = document.createElement("option");
-          option.value = team.id;
-          option.innerText = team.name;
-          select.appendChild(option);
-        }
+        // for (let select of document.querySelectorAll("[teams-select]")) {
+        //   const option = document.createElement("option");
+        //   option.value = team.id;
+        //   option.innerText = team.name;
+        //   select.appendChild(option);
+        // }
       };
 
       const initialize = () => {
@@ -239,7 +281,7 @@
         //   addTeam();
         // }
 
-        document.getElementById("create-team-button").onclick = () => {
+        const createTeam = () => {
           let teamName = document.getElementById("team-name-input").value;
           if (!teamName || teamName.trim() === "") teamName = null;
           document.getElementById("team-name-input").value = null;
@@ -247,14 +289,8 @@
           if (teams.length === 6)
             document.getElementById("create-team-div").hidden = true;
         };
-        document.getElementById("create-team-button").ontouchstart = () => {
-          let teamName = document.getElementById("team-name-input").value;
-          if (!teamName || teamName.trim() === "") teamName = null;
-          document.getElementById("team-name-input").value = null;
-          addTeam(teamName);
-          if (teams.length === 6)
-            document.getElementById("create-team-div").hidden = true;
-        };
+        document.getElementById("create-team-button").onclick = createTeam;
+        document.getElementById("create-team-button").ontouchstart = createTeam;
 
         const shoot = (e) => {
           e.preventDefault();
@@ -294,8 +330,19 @@
 
         const shootDialog = document.getElementById("shoot-dialog");
         const shootButton = document.getElementById("shoot-button-dialog");
-        shootButton.onclick = () => shootDialog.showModal();
-        shootButton.ontouchstart = () => shootDialog.showModal();
+        const openDialog = () => {
+          initSelects();
+          disableShootButton();
+          shootDialog.showModal();
+        };
+        shootButton.onclick = openDialog;
+        shootButton.ontouchstart = openDialog;
+
+        for (let select of document.querySelectorAll("[teams-select]"))
+          select.addEventListener("change", (e) => {
+            initSelects();
+            disableShootButton();
+          });
       };
 
       const moveTeam = (teamId, dy) => {
@@ -312,6 +359,8 @@
           for (let child of selector.children) {
             if (child.value === teamId.toString()) selector.removeChild(child);
           }
+          const healButton = document.getElementById(`health-${team.id}`);
+          healButton.parentElement.removeChild(healButton);
           // const child = document.querySelector(`.select-shoot-to [value=${teamId}]`);// selector.children..find(x => x.value === teamId)
           // console.log(child)
         }
