@@ -1,0 +1,346 @@
+<html>
+  <head>
+    <style>
+      body {
+        --color: #0155af;
+        /* background-image: url("background.jpg"); */
+        font-family: "Comic Sans MS", "Comic Sans", cursive;
+        color: black;
+        /* background: linear-gradient(
+            rgba(255, 255, 255, 0.8),
+            rgba(255, 255, 255, 0.8)
+          ),
+          url("background.jpg");
+        background-size: cover; */
+        font-size: 22px;
+        background-color: #f0f0f0; /* Цвет фона */
+        background-image: linear-gradient(#ddd 1px, transparent 1px),
+          /* Горизонтальные линии */
+            linear-gradient(90deg, #ddd 1px, transparent 1px); /* Вертикальные линии */
+        background-size: 40px 40px; /* Размер клетки */
+      }
+      .level {
+        display: flex;
+        position: relative;
+        height: 64px;
+      }
+
+      .battlefield {
+        /* border-bottom: 2px solid red; */
+        /* filter: url("#rough-border"); */
+        display: flex;
+        width: 600px;
+      }
+
+      .icon {
+        width: 48px;
+      }
+
+      .team-node {
+        display: flex;
+        flex-direction: column;
+        width: 128px;
+        z-index: 100;
+        font-size: 18px;
+        /* background-image: url(team1.png); */
+      }
+      .team-image {
+        width: 48px;
+        /* position: absolute; */
+        /* margin-top: -32px; */
+      }
+
+      .button {
+        cursor: pointer;
+      }
+      .button:hover {
+        filter: grayscale(1);
+      }
+
+      .buttons {
+        display: flex;
+        position: relative;
+        justify-content: space-evenly;
+      }
+
+      .result {
+        text-align: center;
+        width: 256px;
+        border: 2px solid var(--color);
+        padding: 32px;
+      }
+
+      .field {
+        width: 1000px;
+        height: 633px;
+        background-image: url("background.png");
+        background-size: 100% auto;
+      }
+
+      .heart {
+        cursor: pointer;
+      }
+
+      .location-name {
+        padding-left: -32px;
+        margin-top: -20px;
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      .team-controls {
+        text-align: center;
+        font-size: 18px;
+      }
+    </style>
+    <svg width="0" height="0" style="position: absolute">
+      <filter id="rough-border" x="-20%" y="-20%" width="140%" height="140%">
+        <!-- Добавляем "шум" к границе -->
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.05"
+          numOctaves="4"
+          result="noise"
+        />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="noise"
+          scale="5"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+    </svg>
+  </head>
+  <body>
+    <main class="field">
+      <div class="level" style="top: 60px; left: 260px">
+        <div id="bf-1" class="battlefield"></div>
+        <div class="location-name">Город</div>
+      </div>
+
+      <div class="level" style="top: 110px; left: 260px">
+        <div id="bf-2" class="battlefield"></div>
+        <div class="location-name">Больница</div>
+      </div>
+
+      <div class="level" style="top: 160px; left: 260px">
+        <div id="bf-3" class="battlefield"></div>
+        <div class="location-name">Реанимация</div>
+      </div>
+
+      <div class="level" style="top: 210px; left: 260px">
+        <div id="bf-4" class="battlefield"></div>
+        <div class="location-name">Морг</div>
+      </div>
+      <div class="buttons" id="buttons" style="top: 260px"></div>
+    </main>
+    <div style="display: flex; gap: 32px">
+      <button id="shoot-button-dialog">Стрелять</button>
+      <div id="create-team-div">
+        <input id="team-name-input" placeholder="Название команды" /><button
+          id="create-team-button"
+        >
+          Cоздать
+        </button>
+      </div>
+      <!-- <div id="result" class="result">
+      ...
+      <button>Стрелять</button>
+    </div> -->
+    </div>
+    <dialog id="shoot-dialog" style="font-size: 18px">
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; gap: 8px">
+          Команда
+          <select id="select-shoot-from" teams-select></select>
+          стреляет в
+          <select id="select-shoot-to" teams-select></select>
+          <button id="shoot-button">Стрелять</button>
+        </div>
+        <div><input type="checkbox" id="is-correct" />Правильное решение</div>
+        <div id="result"></div>
+        <form method="dialog">
+          <button>Закрыть</button>
+        </form>
+      </div>
+    </dialog>
+    <script>
+      const nextInt = (min, max) => {
+        return Math.floor(Math.random() * (max - min)) + min;
+      };
+
+      const lastLevelId = 4;
+      let lastTeamId = 0;
+      const teams = [];
+
+      const addTeam = (name) => {
+        id = ++lastTeamId;
+        team = {
+          id: id,
+          level: 1,
+          name: name || `Команда ${id}`,
+          health: 0,
+        };
+        teams.push(team);
+
+        const buttonsDiv = document.getElementById("buttons");
+
+        const teamNode = document.createElement("div");
+        teamNode.textContent = team.name;
+        teamNode.id = team.id;
+        teamNode.className = "team-node";
+        const image = document.createElement("img");
+        image.src = `team${team.id}.png`;
+        image.className = "team-image";
+        teamNode.appendChild(image);
+        // teamNode.style.backgroundImage = `url("team${team.id}.png")`;
+        document.getElementById(`bf-${team.level}`).appendChild(teamNode);
+
+        const teamControls = document.createElement("div");
+        teamControls.className = "team-controls";
+
+        const title = document.createElement("div");
+        title.innerText = team.name;
+        teamControls.appendChild(title);
+
+        const healthButton = document.createElement("img");
+        healthButton.src = "empty_heart.png";
+        healthButton.className = "icon heart";
+        healthButton.id = `health-${team.id}`;
+        const teamId = team.id;
+        healthButton.onclick = () => {
+          heal(teamId);
+        };
+        healthButton.touchstart = () => {
+          heal(teamId);
+        };
+        teamControls.appendChild(healthButton);
+
+        // const damageButton = document.createElement("img");
+        // damageButton.src = "target.png";
+        // const teamId = team.id;
+        // damageButton.onclick = () => moveTeam(teamId, 1);
+        // damageButton.className = "button icon";
+        // teamControls.appendChild(damageButton);
+
+        buttonsDiv.appendChild(teamControls);
+
+        for (let select of document.querySelectorAll("[teams-select]")) {
+          const option = document.createElement("option");
+          option.value = team.id;
+          option.innerText = team.name;
+          select.appendChild(option);
+        }
+      };
+
+      const initialize = () => {
+        // for (let i = 0; i < 4; i++) {
+        //   addTeam();
+        // }
+
+        document.getElementById("create-team-button").onclick = () => {
+          let teamName = document.getElementById("team-name-input").value;
+          if (!teamName || teamName.trim() === "") teamName = null;
+          document.getElementById("team-name-input").value = null;
+          addTeam(teamName);
+          if (teams.length === 6)
+            document.getElementById("create-team-div").hidden = true;
+        };
+        document.getElementById("create-team-button").ontouchstart = () => {
+          let teamName = document.getElementById("team-name-input").value;
+          if (!teamName || teamName.trim() === "") teamName = null;
+          document.getElementById("team-name-input").value = null;
+          addTeam(teamName);
+          if (teams.length === 6)
+            document.getElementById("create-team-div").hidden = true;
+        };
+
+        const shoot = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          let from = document.getElementById("select-shoot-from").value;
+          let to = document.getElementById("select-shoot-to").value;
+
+          const teamFrom = teams.find((x) => x.id === parseInt(from));
+          const teamTo = teams.find((x) => x.id === parseInt(to));
+
+          const diff = Math.abs(teamFrom.level - teamTo.level);
+          const result = nextInt(1, 11);
+          const isCorrect = document.getElementById("is-correct").checked;
+
+          let isSuccess = false;
+          if (diff < 2) {
+            if (isCorrect) isSuccess = !(result % 3 === 0);
+            else isSuccess = result % 3 === 0;
+          } else {
+            if (isCorrect) isSuccess = !(result % 2 === 0);
+            else isSuccess = result === 4 || result === 8;
+          }
+
+          const resultDiv = document.getElementById("result");
+          if (isSuccess) {
+            resetHealth(teamTo.id);
+            moveTeam(parseInt(to), 1);
+            resultDiv.innerText = `${result} — Попадение!`;
+            resultDiv.style.color = "green";
+          } else {
+            resultDiv.innerText = `${result} — Промах!`;
+            resultDiv.style.color = "red";
+          }
+        };
+        document.getElementById("shoot-button").onclick = shoot;
+        document.getElementById("shoot-button").ontouchstart = shoot;
+
+        const shootDialog = document.getElementById("shoot-dialog");
+        const shootButton = document.getElementById("shoot-button-dialog");
+        shootButton.onclick = () => shootDialog.showModal();
+        shootButton.ontouchstart = () => shootDialog.showModal();
+      };
+
+      const moveTeam = (teamId, dy) => {
+        const team = teams.find((x) => x.id === teamId);
+        const teamNode = document.getElementById(team.id);
+        teamNode.parentNode.removeChild(teamNode);
+
+        team.health = 0;
+        team.level += dy;
+        document.getElementById(`bf-${team.level}`).appendChild(teamNode);
+
+        if (team.level >= lastLevelId) {
+          const selector = document.getElementById("select-shoot-to");
+          for (let child of selector.children) {
+            if (child.value === teamId.toString()) selector.removeChild(child);
+          }
+          // const child = document.querySelector(`.select-shoot-to [value=${teamId}]`);// selector.children..find(x => x.value === teamId)
+          // console.log(child)
+        }
+      };
+
+      const heal = (teamId) => {
+        const team = teams.find((x) => x.id === teamId);
+        team.health += 1;
+        if (team.health == 2) {
+          if (team.level > 1) moveTeam(teamId, -1);
+          team.health = 0;
+        }
+        const healthNode = document.getElementById(`health-${teamId}`);
+        healthNode.src =
+          team.health === 0 ? "empty_heart.png" : "half_heart.png";
+      };
+      const resetHealth = (teamId) => {
+        const team = teams.find((x) => x.id === teamId);
+        team.health = 0;
+        const healthNode = document.getElementById(`health-${teamId}`);
+        healthNode.src = "empty_heart.png";
+      };
+
+      // document.getElementById("damage-1").onclick = (e) =>
+      //   moveTeam(
+      //     teams.find((x) => x.id === 1),
+      //     1
+      //   );
+      initialize();
+    </script>
+  </body>
+</html>
